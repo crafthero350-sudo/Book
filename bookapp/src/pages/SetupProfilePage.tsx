@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ArrowRight, ArrowLeft, BookOpen, Sparkles } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
+import { CoinMascot } from "@/components/CoinMascot";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -34,10 +35,11 @@ const avatars = [
 export default function SetupProfilePage() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
-  const [step, setStep] = useState<"avatar" | "username">("avatar");
+  const [step, setStep] = useState<"avatar" | "profile">("avatar");
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [usernameError, setUsernameError] = useState("");
 
@@ -89,6 +91,7 @@ export default function SetupProfilePage() {
         .update({
           username,
           display_name: displayName || username,
+          bio: bio.trim() || null,
           avatar_url: urlData.publicUrl,
         })
         .eq("user_id", user.id);
@@ -136,9 +139,9 @@ export default function SetupProfilePage() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", damping: 15, delay: 0.1 }}
-          className="w-14 h-14 rounded-2xl bg-foreground flex items-center justify-center mx-auto mb-4"
+          className="w-14 h-14 mx-auto mb-4"
         >
-          <BookOpen className="w-7 h-7 text-background" strokeWidth={1.5} />
+          <CoinMascot />
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
@@ -159,9 +162,12 @@ export default function SetupProfilePage() {
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className={`w-8 h-1 rounded-full transition-colors ${step === "avatar" ? "bg-foreground" : "bg-border"}`} />
-        <div className={`w-8 h-1 rounded-full transition-colors ${step === "username" ? "bg-foreground" : "bg-border"}`} />
+      <div className="flex flex-col items-center gap-2 mb-6">
+        <div className="text-xs text-muted-foreground">Step {step === "avatar" ? 1 : 2} of 2</div>
+        <div className="flex items-center justify-center gap-2">
+          <div className={`w-8 h-1 rounded-full transition-colors ${step === "avatar" ? "bg-foreground" : "bg-border"}`} />
+          <div className={`w-8 h-1 rounded-full transition-colors ${step === "profile" ? "bg-foreground" : "bg-border"}`} />
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -222,18 +228,18 @@ export default function SetupProfilePage() {
             <motion.button
               whileTap={{ scale: 0.97 }}
               whileHover={{ scale: 1.01 }}
-              onClick={() => selectedAvatar && setStep("username")}
+              onClick={() => selectedAvatar && setStep("profile")}
               disabled={!selectedAvatar}
               className="w-full py-3.5 rounded-xl bg-foreground text-background font-semibold text-sm disabled:opacity-30 transition-all flex items-center justify-center gap-2 shadow-lg"
             >
               <Sparkles className="w-4 h-4" />
-              Continue
+              Next
               <ArrowRight className="w-4 h-4" />
             </motion.button>
           </motion.div>
         ) : (
           <motion.div
-            key="username"
+            key="profile"
             initial={{ opacity: 0, x: 40, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 40, scale: 0.96 }}
@@ -268,7 +274,7 @@ export default function SetupProfilePage() {
             </div>
 
             {/* Username */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Username</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
@@ -287,6 +293,23 @@ export default function SetupProfilePage() {
                 <p className="text-red-500 text-xs mt-1">{usernameError}</p>
               )}
               <p className="text-muted-foreground text-xs mt-1">Letters, numbers, dots, underscores only</p>
+            </div>
+
+            {/* Bio */}
+            <div className="mb-6">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Bio</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell us a little about yourself"
+                maxLength={120}
+                rows={3}
+                className="w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none text-foreground placeholder:text-muted-foreground border border-border focus:border-foreground transition-colors resize-none"
+              />
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-muted-foreground text-xs">Make it fun — we’ll use it in your profile.</p>
+                <span className="text-muted-foreground text-xs">{bio.length}/120</span>
+              </div>
             </div>
 
             {/* Actions */}

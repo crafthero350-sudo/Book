@@ -39,7 +39,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to="/welcome" replace />;
   // Redirect to setup if profile has no avatar (new user)
   if (profile && !profile.avatar_url) return <Navigate to="/setup" replace />;
   return <>{children}</>;

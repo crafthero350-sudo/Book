@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
-import bookappLogo from "@/assets/bookapp-logo.png";
+import { CoinMascot } from "@/components/CoinMascot";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -74,7 +74,9 @@ export default function AuthPage() {
         className="w-full max-w-sm space-y-8 relative z-10"
       >
         <div className="text-center space-y-2">
-          <img src={bookappLogo} alt="BookApp" className="w-12 h-12 mx-auto" />
+          <div className="mx-auto w-14 h-14">
+            <CoinMascot />
+          </div>
           <h1 className="bookapp-title text-4xl">BookApp</h1>
           <p className="text-sm text-muted-foreground">Your reading community</p>
         </div>
