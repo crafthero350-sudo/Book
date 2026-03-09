@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { streamAI } from "@/lib/streamChat";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
-import aiCharacter from "@/assets/ai-character.jpg";
+import { LisaAvatar } from "@/components/LisaAvatar";
 
 interface Message {
   role: "user" | "assistant";
@@ -14,18 +14,46 @@ interface Message {
 export function AIChatBubble() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi! I'm **Lisa** ![📚](https://fonts.gstatic.com/s/e/notoemoji/latest/1f4da/512.png) your personal book companion. I can summarize books, recommend reads, help you write stories, and bring characters to life. What can I help you with?" },
+    {
+      role: "assistant",
+      content:
+        "Hi! I'm **Lisa** ![📚](https://fonts.gstatic.com/s/e/notoemoji/latest/1f4da/512.png) your personal book companion. I can summarize books, recommend reads, help you write stories, and bring characters to life. What can I help you with?",
+    },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastReaction, setLastReaction] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const suggestionChips = [
+    "Recommend me a fantasy book",
+    "Summarize The Alchemist",
+    "Find a book about habits",
+    "Why should I read Sapiens?",
+  ];
+
+  const addAssistantMessage = (content: string) => {
+    setMessages((prev) => [...prev, { role: "assistant", content }]);
+  };
+
+  const addReactionMessage = () => {
+    const reactions = [
+      "😊 Ready when you are!", 
+      "🤔 Hmm... what kind of stories do you love?",
+      "📚 I can find a great read for you — just ask!",
+      "✨ Want a book suggestion based on your mood?",
+    ];
+    const pick = reactions[Math.floor(Math.random() * reactions.length)];
+    setLastReaction(pick);
+    addAssistantMessage(pick);
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
     if (!text || loading) return;
 
     const userMsg: Message = { role: "user", content: text };
@@ -51,7 +79,10 @@ export function AIChatBubble() {
       body: { messages: allMessages.map((m) => ({ role: m.role, content: m.content })) },
       onDelta: update,
       onDone: () => setLoading(false),
-      onError: (msg) => { toast.error(msg); setLoading(false); },
+      onError: (msg) => {
+        toast.error(msg);
+        setLoading(false);
+      },
     });
   };
 
@@ -65,9 +96,9 @@ export function AIChatBubble() {
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={() => setOpen(true)}
-            className="fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full shadow-sm overflow-hidden border border-border bg-card"
+            className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full shadow-sm overflow-hidden border border-border bg-card"
           >
-            <img src={aiCharacter} alt="Lisa" className="w-full h-full object-cover" />
+            <LisaAvatar size={56} isTalking={false} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -84,8 +115,14 @@ export function AIChatBubble() {
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-border">
-                <img src={aiCharacter} alt="Lisa" className="w-full h-full object-cover" />
+              <div className="w-10 h-10">
+                <LisaAvatar
+                  size={40}
+                  isTalking={loading}
+                  onClick={() => {
+                    addReactionMessage();
+                  }}
+                />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold italic" style={{ fontFamily: "'Merriweather', serif" }}>Lisa</p>
@@ -126,6 +163,21 @@ export function AIChatBubble() {
               )}
             </div>
 
+            {/* Suggestions */}
+            <div className="px-4 pt-3 pb-2">
+              <div className="flex flex-wrap gap-2">
+                {suggestionChips.map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => send(chip)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border bg-card text-muted-foreground hover:bg-primary/10 transition"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Input */}
             <div className="px-3 py-2 border-t border-border">
               <div className="flex items-center gap-2 bg-muted rounded-xl px-3 py-2">
@@ -137,11 +189,19 @@ export function AIChatBubble() {
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 <button
-                  onClick={send}
+                  onClick={() => send()}
                   disabled={loading || !input.trim()}
                   className="p-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40"
                 >
-                  <Send className="w-4 h-4" />
+                  {loading ? (
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse delay-100" />
+                      <span className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse delay-200" />
+                    </div>
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
