@@ -1,0 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 265 4% 12.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 265 4% 12.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 265 4% 12.9%;
+    --primary: 266 4% 20.8%;
+    --primary-foreground: 248 0.3% 98.4%;
+    --secondary: 248 0.7% 96.8%;
+    --secondary-foreground: 266 4% 20.8%;
+    --muted: 248 0.7% 96.8%;
+    --muted-foreground: 257 4.6% 55.4%;
+    --accent: 248 0.7% 96.8%;
+    --accent-foreground: 266 4% 20.8%;
+    --destructive: 27 24.5% 57.7%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 256 1.3% 92.9%;
+    --input: 256 1.3% 92.9%;
+    --ring: 257 4% 70.4%;
+    --radius: 0.375rem;
+
+    --activity-none: 40 5% 93%;
+    --activity-low: 48 60% 85%;
+    --activity-medium: 48 70% 72%;
+    --activity-high: 48 80% 60%;
+    --activity-max: 48 90% 50%;
+
+    --story-ring: 265 4% 12.9%;
+    --surface-elevated: 248 0.7% 96.8%;
+    --gold-glow: 48 80% 60%;
+
+    --chart-1: 41 22.2% 64.6%;
+    --chart-2: 185 11.8% 60%;
+    --chart-3: 227 7% 39.8%;
+    --chart-4: 84 18.9% 82.8%;
+    --chart-5: 70 18.8% 76.9%;
+
+    --sidebar: 248 0.3% 98.4%;
+    --sidebar-foreground: 265 4% 12.9%;
+    --sidebar-primary: 266 4% 20.8%;
+    --sidebar-primary-foreground: 248 0.3% 98.4%;
+    --sidebar-accent: 248 0.7% 96.8%;
+    --sidebar-accent-foreground: 266 4% 20.8%;
+    --sidebar-border: 256 1.3% 92.9%;
+    --sidebar-ring: 257 4% 70.4%;
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    --pastel-yellow: 48 100% 93%;
+    --pastel-red: 0 100% 95%;
+    --pastel-blue: 210 100% 95%;
+    --pastel-green: 140 60% 93%;
+    --pastel-purple: 270 80% 95%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 0 0% 15%;
+    --foreground: 248 0.3% 98.4%;
+    --card: 266 4% 20.8%;
+    --card-foreground: 248 0.3% 98.4%;
+    --popover: 266 4% 20.8%;
+    --popover-foreground: 248 0.3% 98.4%;
+    --primary: 256 1.3% 92.9%;
+    --primary-foreground: 266 4% 20.8%;
+    --secondary: 260 4.1% 27.9%;
+    --secondary-foreground: 248 0.3% 98.4%;
+    --muted: 260 4.1% 27.9%;
+    --muted-foreground: 257 4% 70.4%;
+    --accent: 260 4.1% 27.9%;
+    --accent-foreground: 248 0.3% 98.4%;
+    --destructive: 22 19.1% 70.4%;
+    --destructive-foreground: 248 0.3% 98.4%;
+    --border: 0 0% 100% / 10%;
+    --input: 0 0% 100% / 15%;
+    --ring: 264 2.7% 55.1%;
+
+    --activity-none: 0 0% 14%;
+    --activity-low: 48 40% 25%;
+    --activity-medium: 48 50% 35%;
+    --activity-high: 48 60% 45%;
+    --activity-max: 48 70% 55%;
+
+    --story-ring: 248 0.3% 98.4%;
+    --surface-elevated: 0 0% 11%;
+    --gold-glow: 48 60% 50%;
+
+    --chart-1: 264 24.3% 48.8%;
+    --chart-2: 162 17% 69.6%;
+    --chart-3: 70 18.8% 76.9%;
+    --chart-4: 304 26.5% 62.7%;
+    --chart-5: 16 24.6% 64.5%;
+
+    --sidebar: 266 4% 20.8%;
+    --sidebar-foreground: 248 0.3% 98.4%;
+    --sidebar-primary: 264 24.3% 48.8%;
+    --sidebar-primary-foreground: 248 0.3% 98.4%;
+    --sidebar-accent: 260 4.1% 27.9%;
+    --sidebar-accent-foreground: 248 0.3% 98.4%;
+    --sidebar-border: 0 0% 100% / 10%;
+    --sidebar-ring: 264 2.7% 55.1%;
+
+    --pastel-yellow: 48 60% 15%;
+    --pastel-red: 0 50% 15%;
+    --pastel-blue: 210 50% 15%;
+    --pastel-green: 140 40% 15%;
+    --pastel-purple: 270 40% 15%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .bookapp-title {
+    font-family: 'Merriweather', 'Georgia', serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: hsl(var(--foreground));
+  }
+
+  .page-flip {
+    perspective: 1200px;
+    transform-style: preserve-3d;
+  }
+
+  .page-flip-animation {
+    animation: pageFlip 0.6s cubic-bezier(0.645, 0.045, 0.355, 1);
+    transform-origin: left center;
+  }
+
+  .story-ring {
+    @apply rounded-full p-[2px] border;
+    border-color: hsl(var(--border));
+  }
+
+  .story-ring-active {
+    @apply rounded-full p-[2px] border;
+    border-color: hsl(var(--foreground));
+  }
+
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-0.5 text-muted-foreground transition-colors duration-200;
+  }
+
+  .bottom-nav-item-active {
+    @apply flex flex-col items-center gap-0.5 text-foreground transition-colors duration-200;
+  }
+
+  .feed-card {
+    @apply border-b border-border pb-4 mb-4;
+  }
+
+  .section-title {
+    @apply text-base font-semibold tracking-tight;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .book-progress-bar {
+    @apply h-1 rounded-full bg-muted overflow-hidden;
+  }
+
+  .book-progress-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: hsl(var(--foreground));
+  }
+
+  .gold-gradient {
+    background: hsl(var(--foreground));
+  }
+
+  .gold-shadow {
+    box-shadow: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes pageFlip {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(-180deg); }
+}
