@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search as SearchIcon, Plus, Check, ArrowLeft, Filter } from "lucide-react";
+import { Search as SearchIcon, Check, ArrowLeft, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { NotionEmoji } from "@/components/NotionEmoji";
+import { searchOpenLibrary, BookSearchResult, makePurchaseLinks } from "@/lib/openLibrary";
 
 interface BookData {
   id: string;
@@ -14,6 +15,9 @@ interface BookData {
   cover_url: string | null;
   description: string | null;
   price: number | null;
+  isbn?: string;
+  source?: "local" | "online";
+  openLibraryKey?: string;
 }
 
 interface UserBook {
@@ -35,7 +39,7 @@ interface PostResult {
   profile?: { display_name: string | null; username: string | null; avatar_url: string | null };
 }
 
-type SearchFilter = "all" | "books" | "posts" | "reels";
+type SearchFilter = "all" | "books" | "posts" | "reels" | "web";
 
 export default function SearchScreen() {
   const { user } = useAuth();
@@ -43,6 +47,9 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<SearchFilter>("all");
   const [books, setBooks] = useState<BookData[]>([]);
+  const [onlineResults, setOnlineResults] = useState<BookSearchResult[]>([]);
+  const [onlineLoading, setOnlineLoading] = useState(false);
+  const [onlineError, setOnlineError] = useState<string | null>(null);
   const [userBookIds, setUserBookIds] = useState<Set<string>>(new Set());
   const [userBooks, setUserBooks] = useState<UserBook[]>([]);
   const [postResults, setPostResults] = useState<PostResult[]>([]);
@@ -50,9 +57,30 @@ export default function SearchScreen() {
   const [selectedBook, setSelectedBook] = useState<BookData | null>(null);
 
   const fetchBooks = useCallback(async () => {
-    const { data } = await supabase.from("books").select("id, title, author, cover_url, description, price").order("title");
-    if (data) setBooks(data as BookData[]);
+    const { data } = await supabase
+      .from("books")
+      .select("id, title, author, cover_url, description, price, isbn")
+      .order("title");
+    if (data) setBooks((data as BookData[]).map((b) => ({ ...b, source: "local" })));
     setLoading(false);
+  }, []);
+
+  const fetchOnlineBooks = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setOnlineResults([]);
+      setOnlineError(null);
+      return;
+    }
+    setOnlineLoading(true);
+    try {
+      const results = await searchOpenLibrary(q, 12);
+      setOnlineResults(results);
+      setOnlineError(null);
+    } catch (err: any) {
+      setOnlineError(err.message || "Unable to fetch online results");
+    } finally {
+      setOnlineLoading(false);
+    }
   }, []);
 
   const fetchUserBooks = useCallback(async () => {
@@ -85,15 +113,26 @@ export default function SearchScreen() {
     setPostResults(postsData.map((p) => ({ ...p, profile: profileMap.get(p.user_id) })));
   }, []);
 
-  useEffect(() => { fetchBooks(); fetchUserBooks(); }, [fetchBooks, fetchUserBooks]);
+  useEffect(() => {
+    fetchBooks();
+    fetchUserBooks();
+  }, [fetchBooks, fetchUserBooks]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (query.trim()) searchPosts(query);
-      else setPostResults([]);
+      if (query.trim()) {
+        searchPosts(query);
+        if (activeFilter === "all" || activeFilter === "web") {
+          fetchOnlineBooks(query);
+        }
+      } else {
+        setPostResults([]);
+        setOnlineResults([]);
+      }
     }, 300);
+
     return () => clearTimeout(timeout);
-  }, [query, searchPosts]);
+  }, [query, searchPosts, activeFilter, fetchOnlineBooks]);
 
   const addToLibrary = async (bookId: string) => {
     if (!user) return;
@@ -104,6 +143,50 @@ export default function SearchScreen() {
       toast.success("Added to library!");
       fetchUserBooks();
     } catch (err: any) { toast.error(err.message || "Failed to add book"); }
+  };
+
+  const addOnlineBookToLibrary = async (book: BookData) => {
+    if (!user) return;
+    try {
+      // Use ISBN when available to avoid duplicates
+      let bookId: string | null = null;
+      if (book.isbn) {
+        const { data } = await supabase.from("books").select("id").eq("isbn", book.isbn).maybeSingle();
+        if (data) bookId = data.id;
+      }
+
+      if (!bookId) {
+        const { data, error } = await supabase
+          .from("books")
+          .insert({
+            title: book.title,
+            author: book.author,
+            cover_url: book.cover_url,
+            description: book.description,
+            isbn: book.isbn || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        bookId = data.id;
+      }
+
+      const { data: existing } = await supabase
+        .from("user_books")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("book_id", bookId)
+        .maybeSingle();
+      if (!existing) {
+        const { error } = await supabase.from("user_books").insert({ user_id: user.id, book_id: bookId, status: "want_to_read" });
+        if (error) throw error;
+      }
+
+      toast.success("Added to your library!");
+      fetchUserBooks();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add book");
+    }
   };
 
   const removeFromLibrary = async (bookId: string) => {
@@ -132,12 +215,22 @@ export default function SearchScreen() {
     : books;
 
   const showBooks = activeFilter === "all" || activeFilter === "books";
+  const showWeb = (activeFilter === "all" || activeFilter === "web") && query.trim();
   const showPosts = (activeFilter === "all" || activeFilter === "posts" || activeFilter === "reels") && query.trim();
 
   // Book detail view
   if (selectedBook) {
     const ub = userBooks.find((u) => u.book_id === selectedBook.id);
     const inLibrary = userBookIds.has(selectedBook.id);
+    const purchaseLinks = makePurchaseLinks({
+      title: selectedBook.title,
+      author: selectedBook.author,
+      isbn: selectedBook.isbn,
+    });
+    const openLibraryUrl = selectedBook.openLibraryKey
+      ? `https://openlibrary.org${selectedBook.openLibraryKey}`
+      : null;
+
     return (
       <div className="min-h-screen bg-background pb-20">
         <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg border-b border-border">
@@ -184,16 +277,16 @@ export default function SearchScreen() {
               <p className="text-sm text-muted-foreground leading-relaxed">{selectedBook.description}</p>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {inLibrary ? (
               <>
                 {ub?.status === "reading" && (
-                  <button onClick={() => updateProgress(ub.id, Math.min(ub.progress + 10, 100))} className="flex-1 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                  <button onClick={() => updateProgress(ub.id, Math.min(ub.progress + 10, 100))} className="flex-1 min-w-[160px] py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
                     +10% Progress
                   </button>
                 )}
                 {ub?.status === "want_to_read" && (
-                  <button onClick={() => updateProgress(ub.id, 1)} className="flex-1 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                  <button onClick={() => updateProgress(ub.id, 1)} className="flex-1 min-w-[160px] py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
                     Start Reading
                   </button>
                 )}
@@ -202,16 +295,60 @@ export default function SearchScreen() {
                 </button>
               </>
             ) : (
-              <button onClick={() => addToLibrary(selectedBook.id)} className="flex-1 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+              <button
+                onClick={() =>
+                  selectedBook.source === "online"
+                    ? addOnlineBookToLibrary(selectedBook as unknown as BookSearchResult)
+                    : addToLibrary(selectedBook.id)
+                }
+                className="flex-1 min-w-[160px] py-3 rounded-full bg-primary text-primary-foreground font-semibold text-sm"
+              >
                 Add to Library
               </button>
             )}
           </div>
-          {selectedBook.price != null && selectedBook.price > 0 && (
-            <button className="w-full py-3.5 rounded-full bg-accent text-accent-foreground font-semibold text-sm">
-              Buy for ${selectedBook.price.toFixed(2)}
-            </button>
-          )}
+
+          {(selectedBook.price != null && selectedBook.price > 0) || purchaseLinks.length > 0 ? (
+            <div className="space-y-3">
+              {selectedBook.price != null && selectedBook.price > 0 && (
+                <button className="w-full py-3.5 rounded-full bg-accent text-accent-foreground font-semibold text-sm">
+                  Buy for ${selectedBook.price.toFixed(2)}
+                </button>
+              )}
+
+              {purchaseLinks.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Buy from</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {purchaseLinks.map((link) => (
+                      <a
+                        key={link.url}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-border text-xs font-semibold text-foreground hover:bg-card transition"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {openLibraryUrl && (
+                <a
+                  href={openLibraryUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-border text-xs font-semibold text-foreground hover:bg-card transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View on Open Library
+                </a>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -220,6 +357,7 @@ export default function SearchScreen() {
   const filters: { value: SearchFilter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "books", label: "Books" },
+    { value: "web", label: "Web" },
     { value: "posts", label: "Posts" },
     { value: "reels", label: "Reels" },
   ];
@@ -292,6 +430,55 @@ export default function SearchScreen() {
         )}
 
         {/* Books section */}
+        {showWeb && (
+          <section>
+            <h2 className="font-display text-lg font-bold mb-3">Web search results</h2>
+            {onlineLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : onlineError ? (
+              <p className="text-center text-red-500 text-sm py-8">{onlineError}</p>
+            ) : onlineResults.length === 0 ? (
+              <p className="text-center text-muted-foreground text-sm py-8">No results from the web. Try a different search.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {onlineResults.map((book, i) => {
+                  const inLibrary = !!(book.isbn && books.some((b) => b.isbn && b.isbn === book.isbn));
+                  return (
+                    <motion.button
+                      key={book.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      onClick={() => setSelectedBook({ ...book, source: "online" })}
+                      className="flex flex-col gap-1.5 text-left"
+                    >
+                      <div className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden bg-muted">
+                        {book.cover_url ? (
+                          <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground p-2 text-center font-display">{book.title}</div>
+                        )}
+                        {inLibrary && (
+                          <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                            <Check className="w-3 h-3" strokeWidth={2.5} />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold truncate">{book.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{book.author}</p>
+                        {book.isbn && <p className="text-[11px] font-medium text-muted-foreground mt-0.5">ISBN: {book.isbn}</p>}
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {showBooks && (
           <section>
             <h2 className="font-display text-lg font-bold mb-3">
@@ -342,8 +529,19 @@ export default function SearchScreen() {
         )}
 
         {/* No results */}
-        {query && showPosts && postResults.length === 0 && showBooks && filteredBooks.length === 0 && (
-          <p className="text-center text-muted-foreground text-sm mt-12">No results found for "{query}"</p>
+        {query && !onlineLoading && !loading && (
+          (() => {
+            const hasAnyResults =
+              (showBooks && filteredBooks.length > 0) ||
+              (showPosts && postResults.length > 0) ||
+              (showWeb && onlineResults.length > 0);
+            return !hasAnyResults ? (
+              <p className="text-center text-muted-foreground text-sm mt-12">
+                No results found for "
+                <span className="font-semibold text-foreground">{query}</span>"
+              </p>
+            ) : null;
+          })()
         )}
       </div>
     </div>

@@ -75,6 +75,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          isbn: string | null
           price: number | null
           title: string
         }
@@ -85,6 +86,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          isbn?: string | null
           price?: number | null
           title: string
         }
@@ -95,6 +97,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          isbn?: string | null
           price?: number | null
           title?: string
         }
