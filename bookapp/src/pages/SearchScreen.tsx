@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Search as SearchIcon, Check, ArrowLeft, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -58,10 +59,10 @@ export default function SearchScreen() {
 
   const fetchBooks = useCallback(async () => {
     const { data } = await supabase
-      .from("books")
+      .from<Database["public"]["Tables"]["books"]["Row"]>("books")
       .select("id, title, author, cover_url, description, price, isbn")
       .order("title");
-    if (data) setBooks((data as BookData[]).map((b) => ({ ...b, source: "local" })));
+    if (data) setBooks(data.map((b) => ({ ...b, source: "local" })));
     setLoading(false);
   }, []);
 
@@ -76,22 +77,42 @@ export default function SearchScreen() {
       const results = await searchOpenLibrary(q, 12);
       setOnlineResults(results);
       setOnlineError(null);
-    } catch (err: any) {
-      setOnlineError(err.message || "Unable to fetch online results");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setOnlineError(message || "Unable to fetch online results");
     } finally {
       setOnlineLoading(false);
     }
   }, []);
 
+  type UserBookQueryResult = {
+    id: string;
+    book_id: string;
+    status: string;
+    progress: number | null;
+    current_page: number | null;
+    book: { id: string; title: string; author: string; cover_url: string | null } | null;
+  };
+
   const fetchUserBooks = useCallback(async () => {
     if (!user) return;
     const [ubRes, ubDetailRes] = await Promise.all([
-      supabase.from("user_books").select("book_id").eq("user_id", user.id),
-      supabase.from("user_books").select("id, book_id, status, progress, current_page, book:books(id, title, author, cover_url)").eq("user_id", user.id).order("updated_at", { ascending: false }),
+      supabase.from<Database["public"]["Tables"]["user_books"]["Row"]>("user_books").select("book_id").eq("user_id", user.id),
+      supabase
+        .from<UserBookQueryResult>("user_books")
+        .select("id, book_id, status, progress, current_page, book:books(id, title, author, cover_url)")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false }),
     ]);
     if (ubRes.data) setUserBookIds(new Set(ubRes.data.map((ub) => ub.book_id)));
     if (ubDetailRes.data) {
-      setUserBooks(ubDetailRes.data.map((ub: any) => ({ ...ub, progress: ub.progress || 0, current_page: ub.current_page || 0 })));
+      setUserBooks(
+        ubDetailRes.data.map((ub) => ({
+          ...ub,
+          progress: ub.progress ?? 0,
+          current_page: ub.current_page ?? 0,
+        }))
+      );
     }
   }, [user]);
 
@@ -142,7 +163,10 @@ export default function SearchScreen() {
       setUserBookIds((prev) => new Set([...prev, bookId]));
       toast.success("Added to library!");
       fetchUserBooks();
-    } catch (err: any) { toast.error(err.message || "Failed to add book"); }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to add book");
+    }
   };
 
   const addOnlineBookToLibrary = async (book: BookData) => {
@@ -151,13 +175,17 @@ export default function SearchScreen() {
       // Use ISBN when available to avoid duplicates
       let bookId: string | null = null;
       if (book.isbn) {
-        const { data } = await supabase.from("books").select("id").eq("isbn", book.isbn).maybeSingle();
+        const { data } = await supabase
+          .from<Database["public"]["Tables"]["books"]["Row"]>("books")
+          .select("id")
+          .eq("isbn", book.isbn)
+          .maybeSingle();
         if (data) bookId = data.id;
       }
 
       if (!bookId) {
         const { data, error } = await supabase
-          .from("books")
+          .from<Database["public"]["Tables"]["books"]["Row"]>("books")
           .insert({
             title: book.title,
             author: book.author,
@@ -172,7 +200,7 @@ export default function SearchScreen() {
       }
 
       const { data: existing } = await supabase
-        .from("user_books")
+        .from<Database["public"]["Tables"]["user_books"]["Row"]>("user_books")
         .select("id")
         .eq("user_id", user.id)
         .eq("book_id", bookId)
@@ -184,8 +212,9 @@ export default function SearchScreen() {
 
       toast.success("Added to your library!");
       fetchUserBooks();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add book");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to add book");
     }
   };
 
